@@ -9,17 +9,31 @@ import (
 type number struct {
 	value     int // Number to be factored
 	divisor   int // Smallest divisor of value
-	remainder int // Remainder of value / divisor
+	nextValue int // Remainder of value / divisor
 }
+
 type numbers []*number
 
+// sumLargestPrimeFactors returns the sum of the largest prime factors in
+// each number from two up to and including a given number n.
+func (nums numbers) sumLargestPrimeFactors(n int) int {
+	var s int
+	for 1 < n {
+		s += nums.largestPrimeFactor(n)
+		n--
+	}
+	return s
+}
+
+// largestPrimeFactor returns the largest prime factor of a number in a
+// set of numbers.
 func (nums numbers) largestPrimeFactor(n int) int {
 	p := nums[n-1].divisor
 	for 1 < n {
 		if p < nums[n-1].divisor {
 			p = nums[n-1].divisor
 		}
-		n = nums[n-1].remainder
+		n = nums[n-1].nextValue
 	}
 	return p
 }
@@ -28,55 +42,71 @@ func (nums numbers) factorNumber(n int) map[int]int {
 	facts := make(map[int]int)
 	for 1 < n {
 		facts[nums[n-1].divisor]++
-		n = nums[n-1].remainder
+		n = nums[n-1].nextValue
 	}
 	return facts
 }
 
-// numberDivisorList returns
+// numberDivisorList returns a set of numbers from one up to and
+// including a given number n.
 func numberDivisorList(n int) numbers {
-	facts := make(numbers, n)
-	pnums := []int{2, 3}
+	facts := make(numbers, n) // Numbers to return
+	pnums := []int{2, 3}      // Set of prime numbers
+
+	// Initialize numbers as 1, 2, ..., n
 	for i := range facts {
 		facts[i] = &number{
 			value:     i + 1,
-			divisor:   i + 1, // Assume each i is prime
-			remainder: 1,
+			divisor:   i + 1, // Initially, assume each i is prime
+			nextValue: 1,     // Divisor is indicated as prime if nextValue is one
 		}
 	}
-	var j int
+
+	// Iterate from n to one finding the smallest divisor and nextValue
+	var pIndex int // Indexer that iterates through prime numbers list
 	for 0 < n {
+		fmt.Println(n)
 		if n%2 == 0 {
-			// n is even
+			// Case: n is even
 			facts[n-1].divisor = 2
-			facts[n-1].remainder = n / 2
+			facts[n-1].nextValue = n / 2
 		} else {
-			// n is odd
-			for i := 3; i <= int(math.Sqrt(float64(n))); {
-				if n%i == 0 {
+			// Case: n is odd
+			pIndex = 1 // Start at three
+
+			// Iterate through known primes if divisor candidate i is
+			// less than the current largest prime. Otherwise, iterate
+			// from largest prime up to sqrt(n) for each odd divisor
+			// candidate.
+			for divisor := 3; divisor <= int(math.Sqrt(float64(n))); {
+				if n%divisor == 0 {
 					// n is composite
-					facts[n-1].divisor = i
-					facts[n-1].remainder = n / i
-					if facts[n-1].remainder == 1 {
-						// Divisor is a prime; insert if new
-						if sort.Search(len(pnums), func(index int) bool { return pnums[index] == facts[n-1].divisor }) == len(pnums) {
-							pnums = append(pnums, facts[n-1].divisor)
-							sort.Ints(pnums)
-							fmt.Println("primes:", pnums)
-						}
+					facts[n-1].divisor = divisor
+					facts[n-1].nextValue = n / divisor
+
+					fmt.Printf("search result for %d in %v: %d\n", facts[n-1].divisor, pnums, sort.Search(len(pnums), func(j int) bool { return pnums[j] == facts[n-1].divisor }))
+
+					// Divisor is a prime if remainder is one. Insert
+					// into set of primes if it is newly found (search
+					// returns len(pnums)).
+					if sort.Search(len(pnums), func(j int) bool { return pnums[j] == facts[n-1].divisor }) == len(pnums) {
+						pnums = append(pnums, facts[n-1].divisor)
+						sort.Ints(pnums)
 					}
 					break
 				}
-				if pnums[len(pnums)-1] <= i {
-					i += 2 // Search for higher prime divisor candidates
-					j = 1
+
+				// Search for next divisor. n is currently odd, so
+				// iterate i by two as i is always odd.
+				if pIndex < len(pnums) {
+					divisor = pnums[pIndex]
+					pIndex++
 				} else {
-					i = pnums[j] // Use the next known prime as a divisor
-					j++
+					divisor += 2
 				}
 			}
 		}
-		n--
+		n-- // Select next number
 	}
 	return facts
 }
