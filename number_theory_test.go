@@ -67,3 +67,15 @@ func BenchmarkSumLargestPrimeFactors1(b *testing.B) {
 		)
 	}
 }
+
+func TestExportSequence(t *testing.T) {
+	n := 5
+	s := make([]int, n)
+	for i := 0; i < n; i++ {
+		s[i] = i
+	}
+	err := exportSequence(s, "test.csv")
+	if err != nil {
+		t.Fatalf("expected %v, received %s\n", nil, err.Error())
+	}
+}

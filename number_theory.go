@@ -1,9 +1,14 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"io"
 	"math"
+	"os"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 type number struct {
@@ -64,6 +69,7 @@ func numberDivisorList(n int) numbers {
 
 	// Iterate from n to one finding the smallest divisor and nextValue
 	var pIndex int // Indexer that iterates through prime numbers list
+	var d int      // Divisor candidate
 	for 0 < n {
 		fmt.Println(n)
 		if n%2 == 0 {
@@ -72,19 +78,20 @@ func numberDivisorList(n int) numbers {
 			facts[n-1].nextValue = n / 2
 		} else {
 			// Case: n is odd
-			pIndex = 1 // Start at three
+			pIndex = 1 // Start divisor at value of three
+			d = pnums[pIndex]
 
-			// Iterate through known primes if divisor candidate i is
-			// less than the current largest prime. Otherwise, iterate
+			// Iterate through known primes if d is less than the
+			// current largest prime. Otherwise, iterate
 			// from largest prime up to sqrt(n) for each odd divisor
 			// candidate.
-			for divisor := 3; divisor <= int(math.Sqrt(float64(n))); {
-				if n%divisor == 0 {
+			for d <= int(math.Sqrt(float64(n))) {
+				if n%d == 0 {
 					// n is composite
-					facts[n-1].divisor = divisor
-					facts[n-1].nextValue = n / divisor
+					facts[n-1].divisor = d
+					facts[n-1].nextValue = n / d
 
-					fmt.Printf("search result for %d in %v: %d\n", facts[n-1].divisor, pnums, sort.Search(len(pnums), func(j int) bool { return pnums[j] == facts[n-1].divisor }))
+					fmt.Printf("search result for d = %d in pnums = %v: %d\n", facts[n-1].divisor, pnums, sort.Search(len(pnums), func(j int) bool { return pnums[j] == facts[n-1].divisor }))
 
 					// Divisor is a prime if remainder is one. Insert
 					// into set of primes if it is newly found (search
@@ -96,13 +103,12 @@ func numberDivisorList(n int) numbers {
 					break
 				}
 
-				// Search for next divisor. n is currently odd, so
-				// iterate i by two as i is always odd.
+				// Search for next divisor.
 				if pIndex < len(pnums) {
-					divisor = pnums[pIndex]
+					d = pnums[pIndex] // Check next prime, starting with three (pIndex = one)
 					pIndex++
 				} else {
-					divisor += 2
+					d += 2 // n is currently odd, so only check odd divisors
 				}
 			}
 		}
@@ -260,4 +266,55 @@ func isPrime(n int) bool {
 		}
 	}
 	return true
+}
+
+// importSequence returns a sequence of integers from a csv file.
+func importSequence(filename string) ([]int, error) {
+	var err error
+	var n int
+	sequence := make([]int, 0, 256)
+	data := make([]string, 0, 256)
+	reader := csv.NewReader(strings.NewReader(filename))
+	for i := 0; ; i++ {
+		data, err = reader.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		n, err = strconv.Atoi(data[0])
+		if err != nil {
+			return nil, err
+		}
+		sequence = append(sequence, n)
+	}
+	return sequence, nil
+}
+
+// exportSequence writes a seqence of integers to a csv file.
+func exportSequence(sequence []int, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	s := make([]string, len(sequence))
+	for i := range s {
+		s[i] = strconv.Itoa(sequence[i])
+	}
+	return writer.Write(s)
+}
+
+// primesSieve TODO
+func primesSieve(n int) []int {
+	// TODO: implement the sieve of Eratosthenes
+	seive := make([]int, n-2)
+	p := make(map[int]bool)
+	for i := 2; i <= n; i++ {
+		p[i] = true
+	}
+	return seive
 }
