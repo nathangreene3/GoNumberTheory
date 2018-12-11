@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"os"
 	"sort"
@@ -294,9 +295,16 @@ func importSequence(filename string) ([]int, error) {
 
 // exportSequence writes a seqence of integers to a csv file.
 func exportSequence(sequence []int, filename string) error {
-	file, err := os.Open(filename)
+	file, err := os.Create(filename)
 	if err != nil {
-		return err
+		if !os.IsExist(err) {
+			log.Fatal(err.Error())
+		}
+
+		file, err = os.OpenFile(filename, 0, os.ModePerm)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 	}
 	defer file.Close()
 
@@ -308,13 +316,21 @@ func exportSequence(sequence []int, filename string) error {
 	return writer.Write(s)
 }
 
-// primesSieve TODO
-func primesSieve(n int) []int {
-	// TODO: implement the sieve of Eratosthenes
-	seive := make([]int, n-2)
-	p := make(map[int]bool)
+// eratosthenes returns a list of prime numbers on the range [2,n].
+func eratosthenes(n int) []int {
+	p := make(map[int]bool) // Indicates if a number is prime (true) or composite (false)
 	for i := 2; i <= n; i++ {
-		p[i] = true
+		p[i] = true // Initialize all integers as prime
+	}
+
+	seive := make([]int, 0, n-2) // Prime numbers to return
+	for i := 2; i <= n; i++ {
+		if p[i] {
+			seive = append(seive, i) // i must be prime at this point
+			for j := 2 * i; j <= n; j += i {
+				p[j] = false // All multiples of i are not prime
+			}
+		}
 	}
 	return seive
 }
