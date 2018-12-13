@@ -79,3 +79,16 @@ func TestExportSequence(t *testing.T) {
 		t.Fatalf("expected %v, received %s\n", nil, err.Error())
 	}
 }
+
+func BenchmarkEratosthenes(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.Run(
+			fmt.Sprintf("n = 10^%d", i+1),
+			func(c *testing.B) {
+				for j := 0; j < c.N; j++ {
+					eratosthenes(int(math.Pow10(i + 1)))
+				}
+			},
+		)
+	}
+}

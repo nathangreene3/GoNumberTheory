@@ -1,15 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
-	"fmt"
 	"io"
-	"log"
 	"math"
 	"os"
-	"sort"
 	"strconv"
-	"strings"
 )
 
 type number struct {
@@ -56,12 +53,15 @@ func (nums numbers) factorNumber(n int) map[int]int {
 // numberDivisorList returns a set of numbers from one up to and
 // including a given number n.
 func numberDivisorList(n int) numbers {
-	facts := make(numbers, n) // Numbers to return
-	pnums := []int{2, 3}      // Set of prime numbers
+	if n < 1 {
+		panic("n must be positive")
+	}
+
+	nums := make(numbers, n) // Numbers to return
 
 	// Initialize numbers as 1, 2, ..., n
-	for i := range facts {
-		facts[i] = &number{
+	for i := range nums {
+		nums[i] = &number{
 			value:     i + 1,
 			divisor:   i + 1, // Initially, assume each i is prime
 			nextValue: 1,     // Divisor is indicated as prime if nextValue is one
@@ -69,53 +69,31 @@ func numberDivisorList(n int) numbers {
 	}
 
 	// Iterate from n to one finding the smallest divisor and nextValue
-	var pIndex int // Indexer that iterates through prime numbers list
-	var d int      // Divisor candidate
-	for 0 < n {
-		fmt.Println(n)
+	for ; 0 < n; n-- {
 		if n%2 == 0 {
 			// Case: n is even
-			facts[n-1].divisor = 2
-			facts[n-1].nextValue = n / 2
-		} else {
-			// Case: n is odd
-			pIndex = 1 // Start divisor at value of three
-			d = pnums[pIndex]
+			nums[n-1].divisor = 2
+			nums[n-1].nextValue = n / 2
+			continue
+		}
 
-			// Iterate through known primes if d is less than the
-			// current largest prime. Otherwise, iterate
-			// from largest prime up to sqrt(n) for each odd divisor
-			// candidate.
-			for d <= int(math.Sqrt(float64(n))) {
-				if n%d == 0 {
-					// n is composite
-					facts[n-1].divisor = d
-					facts[n-1].nextValue = n / d
+		// Case: n is odd
 
-					fmt.Printf("search result for d = %d in pnums = %v: %d\n", facts[n-1].divisor, pnums, sort.Search(len(pnums), func(j int) bool { return pnums[j] == facts[n-1].divisor }))
-
-					// Divisor is a prime if remainder is one. Insert
-					// into set of primes if it is newly found (search
-					// returns len(pnums)).
-					if sort.Search(len(pnums), func(j int) bool { return pnums[j] == facts[n-1].divisor }) == len(pnums) {
-						pnums = append(pnums, facts[n-1].divisor)
-						sort.Ints(pnums)
-					}
-					break
-				}
-
-				// Search for next divisor.
-				if pIndex < len(pnums) {
-					d = pnums[pIndex] // Check next prime, starting with three (pIndex = one)
-					pIndex++
-				} else {
-					d += 2 // n is currently odd, so only check odd divisors
-				}
+		// Iterate through known primes if d is less than the
+		// current largest prime. Otherwise, iterate
+		// from largest prime up to sqrt(n) for each odd divisor
+		// candidate.
+		// for d <= int(math.Sqrt(float64(n))) {
+		for d := 3; d <= n; d += 2 {
+			if n%d == 0 {
+				// n is composite
+				nums[n-1].divisor = d
+				nums[n-1].nextValue = n / d
+				break
 			}
 		}
-		n-- // Select next number
 	}
-	return facts
+	return nums
 }
 
 func (nums numbers) Len() int {
@@ -141,6 +119,7 @@ func factorList(n int) [][]int {
 		flist[i][0] = i // Assume each i is prime
 		flist[i][1] = 1
 	}
+
 	for 0 < n {
 		for i := 2; i <= int(math.Sqrt(float64(n))); i++ {
 			if n%i == 0 {
@@ -214,7 +193,7 @@ func factors(n int) map[int]int {
 	return f
 }
 
-// primes returns prime numbers on range [2,n).
+// primes returns prime numbers on range [2,n). Use eratosthenes instead.
 func primes(n int) []int {
 	// Naive method
 	var p []int
@@ -224,30 +203,25 @@ func primes(n int) []int {
 		}
 	}
 	return p
+}
 
-	// Sieve of Eratosthenes ... TODO
-	// pm := make(map[int]bool)
-	// for i := 2; i <= n; i++ {
-	// 	pm[i] = true
-	// }
-	// p := 2
-	// count := n - 2
-	// for p*p <= n {
-	// 	if pm[p] {
-	// 		for i := p * p; i <= n; i += p {
-	// 			pm[i] = false
-	// 			count--
-	// 		}
-	// 	}
-	// 	p++
-	// }
-	// primes := make([]int, 0, count)
-	// for k, v := range pm {
-	// 	if v {
-	// 		primes = append(primes, k)
-	// 	}
-	// }
-	// return primes
+// eratosthenes returns a list of prime numbers on the range [2,n].
+func eratosthenes(n int) []int {
+	p := make(map[int]bool) // Indicates if a number is prime (true) or composite (false)
+	for i := 2; i <= n; i++ {
+		p[i] = true // Initialize all integers as prime
+	}
+
+	seive := make([]int, 0, n-2) // Prime numbers to return
+	for i := 2; i <= n; i++ {
+		if p[i] {
+			seive = append(seive, i) // i must be prime at this point
+			for j := 2 * i; j <= n; j += i {
+				p[j] = false // All multiples of i are not prime
+			}
+		}
+	}
+	return seive
 }
 
 // isPrime returns true if n is prime and false otherwise.
@@ -271,11 +245,17 @@ func isPrime(n int) bool {
 
 // importSequence returns a sequence of integers from a csv file.
 func importSequence(filename string) ([]int, error) {
-	var err error
-	var n int
 	sequence := make([]int, 0, 256)
 	data := make([]string, 0, 256)
-	reader := csv.NewReader(strings.NewReader(filename))
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(bufio.NewReader(file))
+	var n int
 	for i := 0; ; i++ {
 		data, err = reader.Read()
 		if err != nil {
@@ -284,53 +264,44 @@ func importSequence(filename string) ([]int, error) {
 			}
 			return nil, err
 		}
+
 		n, err = strconv.Atoi(data[0])
 		if err != nil {
 			return nil, err
 		}
+
 		sequence = append(sequence, n)
 	}
 	return sequence, nil
 }
 
-// exportSequence writes a seqence of integers to a csv file.
+// exportSequence writes a seqence of integers to a csv file. Each value will be written on a separate line.
+
 func exportSequence(sequence []int, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		if !os.IsExist(err) {
-			log.Fatal(err.Error())
+			return err
 		}
 
 		file, err = os.OpenFile(filename, 0, os.ModePerm)
 		if err != nil {
-			log.Fatal(err.Error())
+			return err
 		}
 	}
 	defer file.Close()
 
 	writer := csv.NewWriter(file)
-	s := make([]string, len(sequence))
-	for i := range s {
-		s[i] = strconv.Itoa(sequence[i])
-	}
-	return writer.Write(s)
-}
-
-// eratosthenes returns a list of prime numbers on the range [2,n].
-func eratosthenes(n int) []int {
-	p := make(map[int]bool) // Indicates if a number is prime (true) or composite (false)
-	for i := 2; i <= n; i++ {
-		p[i] = true // Initialize all integers as prime
-	}
-
-	seive := make([]int, 0, n-2) // Prime numbers to return
-	for i := 2; i <= n; i++ {
-		if p[i] {
-			seive = append(seive, i) // i must be prime at this point
-			for j := 2 * i; j <= n; j += i {
-				p[j] = false // All multiples of i are not prime
-			}
+	s := make([]string, 1)
+	for i := range sequence {
+		s[0] = strconv.Itoa(sequence[i])
+		err = writer.Write(s)
+		if err != nil {
+			return err
 		}
+
+		writer.Flush()
 	}
-	return seive
+
+	return writer.Error()
 }
