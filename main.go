@@ -1,10 +1,8 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
 func main() {
-	n := 100
-	fmt.Println(numberDivisorList(n).sumLargestPrimeFactors(n))
+	n := 1000
+	fmt.Println(makeNumbers(n).sumLargestPrimeFactors(n))
 }
